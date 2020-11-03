@@ -13,7 +13,7 @@ export default class Difference {
             items[counter - 2].style.display = 'flex';
             counter--;
             if (counter === 1) {
-                items[items.length - 1]. style.display = 'none';
+                items[items.length - 1].remove();
             }
         });
     }
