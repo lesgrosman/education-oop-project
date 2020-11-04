@@ -1,19 +1,36 @@
-export default class videPlayer {
+export default class VideoPlayer {
     constructor(btns, overlay) {
         this.btns = document.querySelectorAll(btns);
         this.overlay = document.querySelector(overlay);
         this.close = this.overlay.querySelector('.close');
+        this.onPlayerStateChange = this.onPlayerStateChange.bind(this);
     }
 
     bindTrigers() {
-        this.btns.forEach(btn => {
+        this.btns.forEach((btn, i) => {
+            try {
+                const blockedElem = btn.closest('.module__video-item').nextElementSibling; // 1st: getting module depends to activeBtn. 2st: getting next module
+
+                if (i % 2 == 0) {
+                    blockedElem.setAttribute('data-disabled', 'true'); // every bottom module will be disable
+                }
+            } catch(e) {}
+
             btn.addEventListener('click', () => {
-                if (document.querySelector('iframe#frame')) {
-                    this.overlay.style.display = 'block';
-                } else {
-                    const path = btn.getAttribute('data-url');
-                    this.createPlayer(path);  
-                }                           
+                if (!btn.closest('.module__video-item') || btn.closest('.module__video-item').getAttribute('data-disabled') !== 'true') { // We can click the button if module IS NOT disable
+                    this.activeBtn = btn;
+
+                    if (document.querySelector('iframe#frame')) {
+                        this.overlay.style.display = 'flex';
+                        if (this.path !== btn.getAttribute('data-url')) {
+                            this.path = btn.getAttribute('data-url');
+                            this.player.loadVideoById({videoId: this.path});
+                        }
+                    } else {
+                        this.path = btn.getAttribute('data-url');
+                        this.createPlayer(this.path);  
+                    } 
+                }
             });
         });
     }
@@ -30,18 +47,44 @@ export default class videPlayer {
             height: '100%',
             width: '100%',
             videoId: `${url}`,
-          });
+            events: {
+                'onStateChange': this.onPlayerStateChange
+            }
+        });
         this.overlay.style.display = 'flex';
     }
 
+    onPlayerStateChange(state) {
+        try {
+            const blockedElem = this.activeBtn.closest('.module__video-item').nextElementSibling; // 1st: getting module depends to activeBtn. 2st: getting next module
+            const playBtn = this.activeBtn.querySelector('svg').cloneNode(true); // copy active button to paste it into blocked module
+
+        if (state.data === 0) { // Check if video was watched to the end
+            if (blockedElem.querySelector('.play__circle').classList.contains('closed')) {
+                blockedElem.querySelector('.play__circle').classList.remove('closed');
+                blockedElem.querySelector('svg').remove();
+                blockedElem.querySelector('.play__circle').appendChild(playBtn);
+                blockedElem.querySelector('.play__text').textContent = 'play video';
+                blockedElem.querySelector('.play__text').classList.remove('attention');
+                blockedElem.style.opacity = 1;
+                blockedElem.style.filter = 'none';
+
+                blockedElem.setAttribute('data-disabled', 'false');
+            }
+        }
+        } catch(e) {}
+    }
+
     init() {
-        const tag = document.createElement('script');
+        if (this.btns.length > 0) {
+            const tag = document.createElement('script');
 
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-        this.bindTrigers();
-        this.buttonClose();
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    
+            this.bindTrigers();
+            this.buttonClose();
+        }
     }
 }
